@@ -1,0 +1,6 @@
+{
+  "pwa": {
+    "manifestPath": "./frontend/public/manifest.json",
+    "iconsPath": "./frontend/public/icons"
+  }
+}

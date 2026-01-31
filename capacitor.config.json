@@ -1,5 +1,19 @@
 {
   "appId": "com.omenpath.game",
   "appName": "Omenpath",
-  "webDir": "frontend/dist"
+  "webDir": "frontend/dist",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "launchFadeOutDuration": 200,
+      "backgroundColor": "#09090b",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false
+    }
+  }
 }

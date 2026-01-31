@@ -1,21 +1,17 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { useGameStore } from '../stores/booster' // Mantido para lógica de sets se precisar
-import { useAuthStore } from '../stores/auth'    // <--- IMPORTANTE: Auth
+import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
 
-const auth = useAuthStore() // <--- Instância do Auth
+const auth = useAuthStore()
 const router = useRouter()
 
 const stats = ref([])
 const loading = ref(true)
-
-// Estado do Modal de Detalhes
 const selectedSet = ref(null)
 const setCards = ref([])
 const loadingSet = ref(false)
 
-// Stats Gerais
 const grandTotal = computed(() => {
   if (!stats.value.length) return { owned: 0, total: 0, percent: 0 }
   const owned = stats.value.reduce((acc, s) => acc + s.owned, 0)
@@ -23,70 +19,52 @@ const grandTotal = computed(() => {
   return { owned, total, percent: total === 0 ? 0 : Math.floor((owned / total) * 100) }
 })
 
-// Cores das Barras
 const getBarColor = (p) => {
-  if (p === 100) return 'bg-gradient-to-r from-yellow-400 to-amber-600'
-  if (p >= 80) return 'bg-gradient-to-r from-emerald-400 to-green-600'
-  if (p >= 50) return 'bg-gradient-to-r from-blue-400 to-indigo-600'
+  if (p === 100) return 'bg-gradient-to-r from-yellow-400 to-amber-500 shadow-[0_0_10px_rgba(251,191,36,0.5)]'
+  if (p >= 80) return 'bg-gradient-to-r from-emerald-400 to-teal-500 shadow-[0_0_10px_rgba(52,211,153,0.3)]'
+  if (p >= 50) return 'bg-gradient-to-r from-blue-400 to-indigo-500 shadow-[0_0_10px_rgba(96,165,250,0.3)]'
   return 'bg-zinc-700'
 }
 
 onMounted(async () => {
-  // 1. Segurança: Se não tem ID, tchau.
-  if (!auth.user || !auth.user.id) {
-    router.push('/login')
-    return
-  }
-
+  if (!auth.user || !auth.user.id) { router.push('/login'); return }
   loading.value = true
   try {
-    // 2. CORREÇÃO: Usa auth.user.id na URL
-    const res = await fetch(`http://localhost:3000/tracker/${auth.user.id}`)
+    const res = await fetch(`http://localhost:3000/tracker`, { headers: auth.authHeader() })
     stats.value = await res.json()
-  } catch (e) {
-    console.error(e)
-  } finally {
-    loading.value = false
-  }
+  } catch (e) { console.error(e) } finally { loading.value = false }
 })
 
-// Abrir Modal do Set
 async function openSetDetails(set) {
   if (!auth.user) return
-
   selectedSet.value = set
   setCards.value = []
   loadingSet.value = true
-
   try {
-    // 3. CORREÇÃO: Usa auth.user.id aqui também
-    const res = await fetch(`http://localhost:3000/tracker/${auth.user.id}/set/${set.code}`)
+    const res = await fetch(`http://localhost:3000/tracker/set/${set.code}`, { headers: auth.authHeader() })
     setCards.value = await res.json()
-  } catch (e) {
-    console.error(e)
-  } finally {
-    loadingSet.value = false
-  }
+  } catch (e) { console.error(e) } finally { loadingSet.value = false }
 }
 </script>
 
 <template>
-  <div class="min-h-screen bg-zinc-950 pb-24 text-zinc-100 font-sans">
+  <div class="min-h-screen bg-transparent pb-24 text-zinc-100 font-sans">
 
-    <header class="sticky top-0 z-20 bg-zinc-950/90 backdrop-blur border-b border-zinc-800 px-6 py-6 shadow-2xl">
-      <h1 class="font-bold text-2xl text-white mb-4">Progresso</h1>
+    <header class="sticky top-0 z-20 bg-zinc-950/90 backdrop-blur-xl border-b border-white/5 px-6 py-6 shadow-2xl">
+      <h1 class="font-black text-2xl text-white tracking-tight mb-6">Seu Progresso</h1>
 
       <div class="flex items-end justify-between mb-2">
-        <span class="text-xs font-bold text-zinc-400 uppercase tracking-widest">Coleção Completa</span>
+        <span class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Coleção Global</span>
         <div class="text-right">
-          <span class="text-2xl font-black text-white">{{ grandTotal.percent }}%</span>
-          <span class="text-xs text-zinc-500 ml-1">({{ grandTotal.owned }}/{{ grandTotal.total }})</span>
+          <span class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-zinc-400">{{
+            grandTotal.percent }}%</span>
+          <span class="text-[10px] text-zinc-600 font-mono ml-2">({{ grandTotal.owned }}/{{ grandTotal.total }})</span>
         </div>
       </div>
 
-      <div class="h-3 w-full bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
+      <div class="h-2 w-full bg-zinc-900 rounded-full overflow-hidden border border-white/5">
         <div
-          class="h-full transition-all duration-1000 ease-out"
+          class="h-full transition-all duration-1000 ease-out rounded-full"
           :class="getBarColor(grandTotal.percent)"
           :style="{ width: `${grandTotal.percent}%` }"
         >
@@ -94,131 +72,119 @@ async function openSetDetails(set) {
       </div>
     </header>
 
-    <div class="p-4 space-y-4">
+    <div class="p-4 space-y-3">
       <div
         v-if="loading"
-        class="text-center py-10 text-zinc-500 animate-pulse"
-      >Calculando coleção...</div>
+        class="text-center py-20"
+      >
+        <div class="animate-spin text-3xl mb-2">🔮</div>
+        <p class="text-xs font-bold text-zinc-600 uppercase tracking-widest">Sincronizando dados...</p>
+      </div>
 
       <div
         v-for="set in stats"
         :key="set.code"
         @click="openSetDetails(set)"
-        class="bg-zinc-900 rounded-2xl border border-zinc-800 p-4 relative overflow-hidden active:scale-[0.98] transition cursor-pointer hover:border-zinc-700"
+        class="bg-zinc-900/60 border border-white/5 rounded-2xl p-4 relative overflow-hidden active:scale-[0.99] transition cursor-pointer hover:bg-zinc-900 group shadow-md"
       >
         <div
           v-if="set.percent === 100"
-          class="absolute inset-0 bg-yellow-500/5 pointer-events-none"
+          class="absolute inset-0 bg-yellow-500/5 pointer-events-none border border-yellow-500/20 rounded-2xl"
         ></div>
 
-        <div class="flex gap-4 mb-3">
+        <div class="flex gap-4 mb-4">
           <div
-            class="w-12 h-12 bg-zinc-950 rounded-xl flex items-center justify-center border border-zinc-800 shrink-0">
+            class="w-12 h-12 bg-black rounded-xl flex items-center justify-center border border-white/10 shrink-0 p-2 shadow-inner"
+          >
             <img
               :src="set.icon"
-              class="w-8 h-8 invert opacity-80"
+              class="w-full h-full object-contain invert opacity-70 group-hover:opacity-100 transition-opacity"
             >
           </div>
 
-          <div class="flex-1 min-w-0">
-            <div class="flex justify-between items-start">
-              <div>
-                <h3 class="font-bold text-white text-lg truncate">{{ set.name }}</h3>
-                <p class="text-xs text-zinc-500 font-mono uppercase">{{ set.code }} • {{ set.date?.split('-')[0] }}</p>
-              </div>
-              <div class="text-right flex items-center gap-2">
-                <div
-                  class="font-bold text-lg"
-                  :class="set.percent === 100 ? 'text-yellow-500' : 'text-white'"
-                >{{ set.percent }}%</div>
-                <span class="text-zinc-600 text-xs">›</span>
-              </div>
+          <div class="flex-1 min-w-0 flex flex-col justify-center">
+            <div class="flex justify-between items-center mb-1">
+              <h3 class="font-bold text-white text-sm truncate pr-2">{{ set.name }}</h3>
+              <div
+                class="font-black text-sm"
+                :class="set.percent === 100 ? 'text-yellow-500' : 'text-zinc-300'"
+              >{{ set.percent }}%</div>
+            </div>
+            <div class="h-1.5 w-full bg-black rounded-full overflow-hidden">
+              <div
+                class="h-full rounded-full transition-all duration-1000"
+                :class="getBarColor(set.percent)"
+                :style="{ width: `${set.percent}%` }"
+              ></div>
             </div>
           </div>
         </div>
 
-        <div class="h-2 w-full bg-zinc-950 rounded-full overflow-hidden mb-4">
-          <div
-            class="h-full rounded-full transition-all duration-1000"
-            :class="getBarColor(set.percent)"
-            :style="{ width: `${set.percent}%` }"
-          ></div>
-        </div>
-
-        <div class="grid grid-cols-4 gap-2 pointer-events-none">
+        <div class="grid grid-cols-4 gap-2 pt-2 border-t border-white/5">
           <div
             v-for="(rInfo, rName) in set.breakdown"
             :key="rName"
             class="flex flex-col gap-1"
           >
-            <div class="flex justify-between text-[9px] uppercase font-bold text-zinc-500">
-              <span>{{ rName[0] }}</span>
-              <span :class="{ 'text-zinc-300': rInfo.owned === rInfo.total }">{{ rInfo.owned }}/{{ rInfo.total }}</span>
-            </div>
-            <div class="h-1 bg-zinc-950 rounded-full overflow-hidden">
+            <div class="h-1 bg-black rounded-full overflow-hidden w-full">
               <div
                 class="h-full rounded-full"
                 :class="{
-                  'bg-zinc-400': rName === 'common',
-                  'bg-blue-400': rName === 'uncommon',
-                  'bg-yellow-400': rName === 'rare',
+                  'bg-zinc-500': rName === 'common',
+                  'bg-blue-500': rName === 'uncommon',
+                  'bg-yellow-500': rName === 'rare',
                   'bg-orange-600': rName === 'mythic'
                 }"
                 :style="{ width: rInfo.total > 0 ? `${(rInfo.owned / rInfo.total) * 100}%` : '0%' }"
               >
               </div>
             </div>
+            <div
+              class="text-[9px] font-mono text-zinc-600 text-center"
+              :class="{ 'text-zinc-400 font-bold': rInfo.owned === rInfo.total }"
+            >
+              {{ rInfo.owned }}/{{ rInfo.total }}
+            </div>
           </div>
         </div>
-
       </div>
     </div>
 
     <transition name="slide-up">
       <div
         v-if="selectedSet"
-        class="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
-        style="z-index: 100;"
+        class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-zinc-950/95 backdrop-blur-md"
+        @click.self="selectedSet = null"
       >
-        <div
-          class="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
-          @click="selectedSet = null"
-        ></div>
 
         <div
-          class="bg-zinc-950 w-full h-full sm:h-[90vh] sm:max-w-2xl sm:rounded-3xl flex flex-col animate-slide-up overflow-hidden relative z-10"
+          class="bg-zinc-900 w-full h-full sm:h-[90vh] sm:max-w-2xl sm:rounded-3xl flex flex-col animate-slide-up overflow-hidden relative shadow-2xl border border-white/10"
         >
 
-          <div
-            class="p-4 border-b border-zinc-800 bg-zinc-900/90 backdrop-blur flex justify-between items-center shrink-0"
-          >
-            <div class="flex items-center gap-3">
+          <div class="p-5 border-b border-white/10 bg-zinc-900 flex justify-between items-center shrink-0">
+            <div class="flex items-center gap-4">
               <button
                 @click="selectedSet = null"
-                class="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-white active:scale-95"
+                class="w-10 h-10 rounded-full bg-black border border-white/10 flex items-center justify-center text-white active:scale-95 hover:bg-zinc-800 transition"
               >✕</button>
               <div>
-                <h2 class="font-bold text-white leading-tight">{{ selectedSet.name }}</h2>
-                <div class="text-xs text-zinc-400 flex gap-2">
-                  <span>{{ selectedSet.owned }} / {{ selectedSet.total }} obtidas</span>
-                </div>
+                <h2 class="font-bold text-white leading-none">{{ selectedSet.name }}</h2>
+                <div class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-1">Binder View</div>
               </div>
             </div>
-            <img
-              :src="selectedSet.icon"
-              class="w-8 h-8 invert opacity-50"
-            >
+            <div class="w-10 h-10 p-2 bg-black rounded-lg border border-white/5">
+              <img
+                :src="selectedSet.icon"
+                class="w-full h-full object-contain invert opacity-50"
+              >
+            </div>
           </div>
 
-          <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
-
+          <div class="flex-1 overflow-y-auto p-4 custom-scrollbar bg-black/20">
             <div
               v-if="loadingSet"
               class="py-20 flex justify-center text-indigo-500"
-            >
-              <span class="animate-spin text-3xl">🔮</span>
-            </div>
-
+            ><span class="animate-spin text-3xl">🔮</span></div>
             <div
               v-else
               class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3"
@@ -226,18 +192,18 @@ async function openSetDetails(set) {
               <div
                 v-for="card in setCards"
                 :key="card.id"
-                class="relative aspect-[2.5/3.5] rounded-lg overflow-hidden border border-zinc-800 bg-zinc-900 transition-all duration-300"
-                :class="card.quantity > 0 ? 'shadow-lg' : 'grayscale opacity-30 border-transparent'"
+                class="relative aspect-[2.5/3.5] rounded-xl overflow-hidden bg-zinc-900 transition-all duration-300 group"
+                :class="card.quantity > 0 ? 'shadow-lg border border-white/10' : 'grayscale opacity-20 border border-transparent'"
               >
                 <img
                   :src="card.image_uri"
-                  class="w-full h-full object-cover"
+                  class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   loading="lazy"
                 >
 
                 <div
                   v-if="card.quantity > 0"
-                  class="absolute top-1 right-1 w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center text-[9px] font-bold text-white border border-white/20 shadow-md"
+                  class="absolute top-1.5 right-1.5 min-w-[20px] h-5 bg-indigo-600 rounded-full flex items-center justify-center text-[10px] font-bold text-white px-1 shadow-md z-10 border border-white/20"
                 >
                   {{ card.quantity }}
                 </div>
@@ -247,20 +213,17 @@ async function openSetDetails(set) {
                   class="absolute bottom-0 w-full h-1"
                   :class="{
                     'bg-zinc-500': card.rarity === 'common',
-                    'bg-blue-400': card.rarity === 'uncommon',
-                    'bg-yellow-400': card.rarity === 'rare',
+                    'bg-blue-500': card.rarity === 'uncommon',
+                    'bg-yellow-500': card.rarity === 'rare',
                     'bg-orange-600': card.rarity === 'mythic'
                   }"
                 ></div>
-
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </transition>
-
   </div>
 </template>
 

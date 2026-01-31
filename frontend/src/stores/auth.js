@@ -2,7 +2,6 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 export const useAuthStore = defineStore('auth', () => {
-  // === ESTADO INICIAL (Recuperação Segura) ===
   const storedToken = localStorage.getItem('token')
   let storedUser = null
 
@@ -10,45 +9,40 @@ export const useAuthStore = defineStore('auth', () => {
     const u = localStorage.getItem('user')
     if (u && u !== 'undefined') {
       const parsed = JSON.parse(u)
-      // Validação básica para evitar objetos vazios
-      if (parsed && parsed.id && parsed.username) {
-        storedUser = parsed
-      } else {
-        localStorage.removeItem('user')
-        localStorage.removeItem('token')
-      }
+      if (parsed && parsed.id && parsed.username) storedUser = parsed
+      else { localStorage.removeItem('user'); localStorage.removeItem('token') }
     }
-  } catch (e) {
-    console.error("Erro ao ler cache", e)
-    localStorage.removeItem('user')
-  }
+  } catch (e) { console.error(e); localStorage.removeItem('user') }
 
   const token = ref(storedUser ? storedToken : null)
   const user = ref(storedUser)
   const loading = ref(false)
   const error = ref(null)
 
-  // === AÇÃO: REFRESH (Sincroniza saldo com o servidor) ===
+  function authHeader() {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token.value}`
+    }
+  }
+
   async function refreshUser() {
-    if (!user.value || !user.value.id) return
-
+    if (!token.value) return
     try {
-      // Use seu IP local se estiver testando no celular
-      const res = await fetch(`http://localhost:3000/user/${user.value.id}`)
+      const res = await fetch(`http://localhost:3000/user/me`, {
+        headers: authHeader()
+      })
       const data = await res.json()
-
       if (data.error) throw new Error(data.error)
 
-      // Atualiza a verdade no frontend
+      // Atualiza o usuário com dados frescos
       user.value.gold = parseInt(data.gold)
       user.value.username = data.username
+      // SALVA O ESTADO DO BOTÃO DIÁRIO
+      user.value.last_daily_claim = data.last_daily_claim
 
-      // Salva no cache
       localStorage.setItem('user', JSON.stringify(user.value))
-
-    } catch (e) {
-      console.error("Erro ao sincronizar usuário:", e)
-    }
+    } catch (e) { console.error(e) }
   }
 
   async function login(email, password) {
@@ -68,12 +62,7 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('token', data.token)
       localStorage.setItem('user', JSON.stringify(data.user))
       return true
-    } catch (e) {
-      error.value = e.message
-      return false
-    } finally {
-      loading.value = false
-    }
+    } catch (e) { error.value = e.message; return false } finally { loading.value = false }
   }
 
   async function register(username, email, password) {
@@ -93,20 +82,13 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('token', data.token)
       localStorage.setItem('user', JSON.stringify(data.user))
       return true
-    } catch (e) {
-      error.value = e.message
-      return false
-    } finally {
-      loading.value = false
-    }
+    } catch (e) { error.value = e.message; return false } finally { loading.value = false }
   }
 
   function logout() {
-    token.value = null
-    user.value = null
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    token.value = null; user.value = null
+    localStorage.removeItem('token'); localStorage.removeItem('user')
   }
 
-  return { token, user, loading, error, login, register, logout, refreshUser }
+  return { token, user, loading, error, login, register, logout, refreshUser, authHeader }
 })

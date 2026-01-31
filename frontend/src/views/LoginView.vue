@@ -16,111 +16,140 @@ async function handleSubmit() {
   } else {
     success = await auth.login(form.value.email, form.value.password)
   }
-
-  if (success) {
-    router.push('/') // Vai para a loja
-  }
+  if (success) router.push('/')
 }
 </script>
 
 <template>
-  <div
-    class="min-h-screen flex flex-col items-center justify-center p-6 bg-zinc-950 text-white relative overflow-hidden"
-  >
+  <div class="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden">
 
     <div
-      class="absolute top-[-20%] left-[-20%] w-[140%] h-[60%] bg-indigo-900/20 blur-[100px] rounded-full pointer-events-none"
+      class="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-900 via-zinc-950 to-zinc-950"
     ></div>
     <div
-      class="absolute bottom-[-10%] right-[-10%] w-[80%] h-[50%] bg-purple-900/20 blur-[80px] rounded-full pointer-events-none"
+      class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-indigo-600/20 rounded-full blur-[120px]"
     ></div>
 
     <div class="w-full max-w-sm relative z-10">
 
-      <div class="text-center mb-10">
+      <div class="text-center mb-12 animate-fade-in-down">
+        <div class="inline-block p-4 rounded-3xl bg-zinc-900/50 border border-white/5 shadow-2xl mb-4 backdrop-blur-md">
+          <span class="text-4xl">🔮</span>
+        </div>
         <h1
-          class="text-4xl font-black tracking-tighter mb-2 bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent"
+          class="text-4xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white via-zinc-200 to-zinc-600 drop-shadow-sm"
         >
           OMENPATH
         </h1>
-        <p class="text-zinc-500 text-sm font-medium uppercase tracking-widest">Digital Card Game</p>
+        <p class="text-indigo-400 text-xs font-bold uppercase tracking-[0.3em] mt-2">Digital Collection</p>
       </div>
 
-      <form
-        @submit.prevent="handleSubmit"
-        class="space-y-4"
+      <div
+        class="bg-zinc-900/40 backdrop-blur-xl border border-white/10 p-6 rounded-3xl shadow-2xl ring-1 ring-black/20"
       >
-
-        <div
-          v-if="isRegister"
-          class="space-y-1"
+        <form
+          @submit.prevent="handleSubmit"
+          class="space-y-5"
         >
-          <label class="text-xs font-bold text-zinc-500 ml-1">Username</label>
-          <input
-            v-model="form.username"
-            type="text"
-            required
-            class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition placeholder-zinc-700"
-            placeholder="Seu nome de jogador"
+
+          <transition-group
+            name="list"
+            tag="div"
+            class="space-y-4"
           >
-        </div>
+            <div
+              v-if="isRegister"
+              key="user"
+              class="space-y-1.5"
+            >
+              <label class="text-[10px] font-bold text-zinc-400 uppercase ml-1">Codinome</label>
+              <input
+                v-model="form.username"
+                type="text"
+                required
+                class="w-full bg-black/20 border border-white/5 rounded-xl px-4 py-3.5 text-white placeholder-zinc-700 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 focus:bg-black/40 outline-none transition-all duration-300"
+                placeholder="Ex: Planeswalker99"
+              >
+            </div>
 
-        <div class="space-y-1">
-          <label class="text-xs font-bold text-zinc-500 ml-1">Email</label>
-          <input
-            v-model="form.email"
-            type="email"
-            required
-            class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition placeholder-zinc-700"
-            placeholder="seu@email.com"
+            <div
+              key="email"
+              class="space-y-1.5"
+            >
+              <label class="text-[10px] font-bold text-zinc-400 uppercase ml-1">Email</label>
+              <input
+                v-model="form.email"
+                type="email"
+                required
+                class="w-full bg-black/20 border border-white/5 rounded-xl px-4 py-3.5 text-white placeholder-zinc-700 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 focus:bg-black/40 outline-none transition-all duration-300"
+                placeholder="acesso@omenpath.com"
+              >
+            </div>
+
+            <div
+              key="pass"
+              class="space-y-1.5"
+            >
+              <label class="text-[10px] font-bold text-zinc-400 uppercase ml-1">Senha</label>
+              <input
+                v-model="form.password"
+                type="password"
+                required
+                class="w-full bg-black/20 border border-white/5 rounded-xl px-4 py-3.5 text-white placeholder-zinc-700 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 focus:bg-black/40 outline-none transition-all duration-300"
+                placeholder="••••••••"
+              >
+            </div>
+          </transition-group>
+
+          <div
+            v-if="auth.error"
+            class="text-red-400 text-xs text-center font-bold bg-red-500/10 py-3 rounded-xl border border-red-500/20 animate-shake"
           >
-        </div>
+            {{ auth.error }}
+          </div>
 
-        <div class="space-y-1">
-          <label class="text-xs font-bold text-zinc-500 ml-1">Senha</label>
-          <input
-            v-model="form.password"
-            type="password"
-            required
-            class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition placeholder-zinc-700"
-            placeholder="••••••••"
+          <button
+            type="submit"
+            :disabled="auth.loading"
+            class="w-full py-4 rounded-xl font-bold uppercase tracking-widest text-sm shadow-lg shadow-indigo-900/20 transition-all active:scale-[0.98] mt-4 relative overflow-hidden group"
+            :class="auth.loading ? 'bg-zinc-800 text-zinc-500' : 'bg-white text-black hover:bg-zinc-100'"
           >
-        </div>
+            <div
+              class="absolute inset-0 bg-gradient-to-r from-transparent via-zinc-200/50 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"
+            ></div>
+            <span
+              v-if="auth.loading"
+              class="animate-pulse"
+            >Acessando o Mainframe...</span>
+            <span v-else>{{ isRegister ? 'Iniciar Jornada' : 'Conectar' }}</span>
+          </button>
 
-        <div
-          v-if="auth.error"
-          class="text-red-400 text-xs text-center font-bold bg-red-900/10 py-2 rounded-lg border border-red-900/20"
-        >
-          {{ auth.error }}
-        </div>
-
-        <button
-          type="submit"
-          :disabled="auth.loading"
-          class="w-full py-4 rounded-xl font-bold uppercase tracking-widest shadow-lg transition active:scale-[0.98] mt-6"
-          :class="auth.loading ? 'bg-zinc-800 text-zinc-500' : 'bg-white text-black hover:bg-indigo-50'"
-        >
-          <span
-            v-if="auth.loading"
-            class="animate-pulse"
-          >Carregando...</span>
-          <span v-else>{{ isRegister ? 'Criar Conta' : 'Entrar' }}</span>
-        </button>
-
-      </form>
+        </form>
+      </div>
 
       <div class="mt-8 text-center">
-        <p class="text-zinc-500 text-sm">
-          {{ isRegister ? 'Já tem conta?' : 'Novo por aqui?' }}
-          <button
-            @click="isRegister = !isRegister"
-            class="text-indigo-400 font-bold hover:underline ml-1"
-          >
-            {{ isRegister ? 'Fazer Login' : 'Criar Conta' }}
-          </button>
-        </p>
+        <button
+          @click="isRegister = !isRegister"
+          class="text-zinc-500 text-xs hover:text-white transition-colors"
+        >
+          {{ isRegister ? 'Já possui acesso?' : 'Novo por aqui?' }}
+          <span class="text-indigo-400 font-bold ml-1 border-b border-indigo-500/30 pb-0.5">{{ isRegister ? 'Fazer Login' : 'Criar Conta' }}</span>
+        </button>
       </div>
 
     </div>
   </div>
 </template>
+
+<style scoped>
+.list-enter-active,
+.list-leave-active {
+  transition: all 0.3s ease;
+}
+
+.list-enter-from,
+.list-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+</style>

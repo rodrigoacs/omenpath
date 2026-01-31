@@ -1,4 +1,10 @@
-{
+{"name": "omenpath-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "postinstall": "cd frontend && npm install",
+    "android": "npm run build --prefix frontend && npx cap sync android && npx cap open android"
+  },
   "dependencies": {
     "@capacitor/android": "^8.0.2",
     "@capacitor/core": "^8.0.2",
