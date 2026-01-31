@@ -4,7 +4,7 @@ import { useGameStore } from '../stores/booster'
 import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
 
-// Assets (Mantidos)
+// Assets
 import plainsSvg from '../assets/plains.svg'
 import islandSvg from '../assets/island.svg'
 import swampSvg from '../assets/swamp.svg'
@@ -68,7 +68,6 @@ const manaIcons = [
 ]
 
 async function loadCollection(reset = false) {
-  // Segurança dupla
   if (!auth.user || !auth.user.id) {
     router.push('/login')
     return
@@ -153,6 +152,32 @@ async function handleSurplus() {
   }
 }
 
+async function handleSellAll() {
+  if (collection.value.length === 0) return alert('Sua coleção já está vazia.')
+
+  // Confirmação 1
+  if (!confirm('ATENÇÃO: Isso vai vender TODAS as suas cartas.\n\nEssa ação é irreversível. Deseja continuar?')) return
+
+  // Confirmação 2 (Segurança extra)
+  if (!confirm('Tem certeza absoluta? Sua coleção será zerada e convertida em moedas.')) return
+
+  try {
+    loading.value = true
+    const data = await store.sellAll(auth.user.id)
+
+    // Feedback visual
+    alert(`Venda concluída!\n\nCartas vendidas: ${data.soldCount}\nLucro: ${fmt(data.goldEarned)} moedas`)
+
+    // Zera a lista visualmente
+    loadCollection(true)
+
+  } catch (e) {
+    alert('Erro ao vender: ' + e.message)
+  } finally {
+    loading.value = false
+  }
+}
+
 onMounted(() => { loadCollection() })
 const fmt = (v) => new Intl.NumberFormat('pt-BR').format(v)
 </script>
@@ -163,15 +188,26 @@ const fmt = (v) => new Intl.NumberFormat('pt-BR').format(v)
     <header class="sticky top-0 z-20 bg-zinc-950/95 backdrop-blur border-b border-zinc-800 px-4 py-3 shadow-lg">
       <div class="flex justify-between items-center h-10 mb-3">
         <h1 class="font-bold text-lg text-white">Coleção</h1>
-        <div class="flex items-center gap-3">
+
+        <div class="flex items-center gap-2">
           <div class="flex items-center gap-1.5 bg-zinc-900 px-3 py-1.5 rounded-full border border-zinc-700 shadow-sm">
             <span class="text-xs">🪙</span>
             <span class="font-mono font-bold text-xs text-yellow-100">{{ fmt(auth.user?.gold || 0) }}</span>
           </div>
+
           <button
             @click="handleSurplus"
-            class="text-red-400 bg-red-900/20 w-8 h-8 flex items-center justify-center rounded-full text-xs font-bold border border-red-500/20 transition active:scale-95"
+            class="text-blue-400 bg-blue-900/20 w-8 h-8 flex items-center justify-center rounded-full text-xs font-bold border border-blue-500/20 transition active:scale-95"
+            title="Vender repetidas (+4)"
           >♻️</button>
+
+          <button
+            @click="handleSellAll"
+            class="text-red-500 bg-red-900/20 w-8 h-8 flex items-center justify-center rounded-full text-[10px] font-bold border border-red-500/30 transition active:scale-95 shadow-[0_0_10px_rgba(220,38,38,0.3)] hover:bg-red-900/40"
+            title="VENDER TUDO"
+          >
+            💀
+          </button>
         </div>
       </div>
 
@@ -317,7 +353,7 @@ const fmt = (v) => new Intl.NumberFormat('pt-BR').format(v)
 
             <div class="relative z-10 text-center mt-4 px-6 pointer-events-none">
               <h2 class="text-xl font-bold text-white leading-tight drop-shadow-md line-clamp-2">{{ selectedGroup.name
-                }}</h2>
+              }}</h2>
               <div class="flex items-center justify-center gap-2 mt-2">
                 <span
                   class="text-[10px] font-bold uppercase tracking-widest"

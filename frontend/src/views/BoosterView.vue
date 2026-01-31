@@ -69,15 +69,12 @@ function selectSet(set) {
 function handleOpen() {
   if (canAfford.value && !loading.value) {
     if (autoClearTimer) clearTimeout(autoClearTimer)
-
+    
     // Passa o ID do usuário da Auth Store
     store.openBooster(selectedSet.value.code, openAmount.value, auth.user.id)
       .then((newCards) => {
-        // Atualiza visualmente o ouro
-        if (auth.user) auth.user.gold -= totalCost.value
-
         cards.value = newCards
-
+        
         setTimeout(() => {
           const el = document.getElementById('results-anchor')
           if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })

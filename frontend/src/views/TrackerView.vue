@@ -1,22 +1,26 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { useGameStore } from '../stores/booster'
+import { useGameStore } from '../stores/booster' // Mantido para lógica de sets se precisar
+import { useAuthStore } from '../stores/auth'    // <--- IMPORTANTE: Auth
+import { useRouter } from 'vue-router'
 
-const store = useGameStore()
+const auth = useAuthStore() // <--- Instância do Auth
+const router = useRouter()
+
 const stats = ref([])
 const loading = ref(true)
 
 // Estado do Modal de Detalhes
-const selectedSet = ref(null)     // O set que foi clicado
-const setCards = ref([])          // As cartas desse set
-const loadingSet = ref(false)     // Loading do modal
+const selectedSet = ref(null)
+const setCards = ref([])
+const loadingSet = ref(false)
 
 // Stats Gerais
 const grandTotal = computed(() => {
   if (!stats.value.length) return { owned: 0, total: 0, percent: 0 }
   const owned = stats.value.reduce((acc, s) => acc + s.owned, 0)
   const total = stats.value.reduce((acc, s) => acc + s.total, 0)
-  return { owned, total, percent: Math.floor((owned / total) * 100) }
+  return { owned, total, percent: total === 0 ? 0 : Math.floor((owned / total) * 100) }
 })
 
 // Cores das Barras
@@ -28,23 +32,35 @@ const getBarColor = (p) => {
 }
 
 onMounted(async () => {
-  store.fetchUser()
+  // 1. Segurança: Se não tem ID, tchau.
+  if (!auth.user || !auth.user.id) {
+    router.push('/login')
+    return
+  }
+
   loading.value = true
   try {
-    const res = await fetch(`http://localhost:3000/tracker/${store.user.id}`)
+    // 2. CORREÇÃO: Usa auth.user.id na URL
+    const res = await fetch(`http://localhost:3000/tracker/${auth.user.id}`)
     stats.value = await res.json()
-  } catch (e) { console.error(e) }
-  finally { loading.value = false }
+  } catch (e) {
+    console.error(e)
+  } finally {
+    loading.value = false
+  }
 })
 
 // Abrir Modal do Set
 async function openSetDetails(set) {
+  if (!auth.user) return
+
   selectedSet.value = set
   setCards.value = []
   loadingSet.value = true
 
   try {
-    const res = await fetch(`http://localhost:3000/tracker/${store.user.id}/set/${set.code}`)
+    // 3. CORREÇÃO: Usa auth.user.id aqui também
+    const res = await fetch(`http://localhost:3000/tracker/${auth.user.id}/set/${set.code}`)
     setCards.value = await res.json()
   } catch (e) {
     console.error(e)
@@ -148,7 +164,7 @@ async function openSetDetails(set) {
                   'bg-yellow-400': rName === 'rare',
                   'bg-orange-600': rName === 'mythic'
                 }"
-                :style="{ width: `${(rInfo.owned / rInfo.total) * 100}%` }"
+                :style="{ width: rInfo.total > 0 ? `${(rInfo.owned / rInfo.total) * 100}%` : '0%' }"
               >
               </div>
             </div>
@@ -161,11 +177,16 @@ async function openSetDetails(set) {
     <transition name="slide-up">
       <div
         v-if="selectedSet"
-        class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/90 backdrop-blur-sm"
+        class="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+        style="z-index: 100;"
       >
+        <div
+          class="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
+          @click="selectedSet = null"
+        ></div>
 
         <div
-          class="bg-zinc-950 w-full h-full sm:h-[90vh] sm:max-w-2xl sm:rounded-3xl flex flex-col animate-slide-up overflow-hidden"
+          class="bg-zinc-950 w-full h-full sm:h-[90vh] sm:max-w-2xl sm:rounded-3xl flex flex-col animate-slide-up overflow-hidden relative z-10"
         >
 
           <div

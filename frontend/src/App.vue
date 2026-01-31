@@ -1,11 +1,23 @@
 <script setup>
 import { RouterView, RouterLink, useRoute } from 'vue-router'
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue' // <--- Import onMounted
+import { useAuthStore } from './stores/auth' // <--- Import Store
 
 const route = useRoute()
+const auth = useAuthStore() // <--- Instância
+
 const isStore = computed(() => route.path === '/')
 const isCollection = computed(() => route.path === '/collection')
 const isTracker = computed(() => route.path === '/tracker')
+const isOracle = computed(() => route.path === '/oracle')
+
+// === SINCRONIZAÇÃO INICIAL ===
+onMounted(() => {
+  // Se estiver logado, busca o saldo real no servidor
+  if (auth.token && auth.user) {
+    auth.refreshUser()
+  }
+})
 </script>
 
 <template>
@@ -77,11 +89,11 @@ const isTracker = computed(() => route.path === '/tracker')
       >
         <span
           class="text-xl transition-transform group-active:scale-90 filter"
-          :class="route.path === '/oracle' ? 'grayscale-0' : 'grayscale opacity-50'"
+          :class="isOracle ? 'grayscale-0' : 'grayscale opacity-50'"
         >🔮</span>
         <span
           class="text-[9px] font-bold uppercase tracking-widest"
-          :class="route.path === '/oracle' ? 'text-indigo-400' : 'text-zinc-600'"
+          :class="isOracle ? 'text-indigo-400' : 'text-zinc-600'"
         >Oráculo</span>
       </RouterLink>
 

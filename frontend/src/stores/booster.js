@@ -1,84 +1,99 @@
-import { ref } from 'vue'
 import { defineStore } from 'pinia'
+import { ref } from 'vue'
+import { useAuthStore } from './auth'
 
-export const useGameStore = defineStore('game', () => {
-  // Estado
-  const cards = ref([])
+export const useGameStore = defineStore('booster', () => {
   const loading = ref(false)
   const error = ref(null)
+  const auth = useAuthStore()
 
-  // Usuário
-  const user = ref({
-    id: 1,
-    username: '...',
-    gold: 0,
-    collection_count: 0
-  })
-
-  // Actions
-  async function fetchUser() {
-    try {
-      const res = await fetch(`http://localhost:3000/user/${user.value.id}`)
-      const data = await res.json()
-      user.value = { ...user.value, ...data }
-    } catch (e) { console.error(e) }
-  }
-
-  // --- NOVA FUNÇÃO OPEN BOOSTER (Suporta Quantidade) ---
-  async function openBooster(setCode, count = 1) {
+  async function openBooster(setCode, amount, userId) {
     loading.value = true
-    cards.value = [] // Limpa a mesa
     error.value = null
-
     try {
-      // Passa ?count=X na URL
-      const res = await fetch(`http://localhost:3000/booster/${setCode}?userId=${user.value.id}&count=${count}`)
+      const res = await fetch(`http://localhost:3000/booster/${setCode}?count=${amount}&userId=${userId}`)
       const data = await res.json()
 
-      if (!res.ok) throw new Error(data.error || 'Erro desconhecido')
+      if (!res.ok || (data.error)) throw new Error(data.error || 'Erro desconhecido')
 
-      // Atualiza estado
-      cards.value = data.cards
-      user.value.gold = data.new_balance
-      // Soma o total de cartas abertas à coleção
-      user.value.collection_count = parseInt(user.value.collection_count) + (15 * count)
+      if (data.new_balance !== undefined && auth.user) {
+        auth.user.gold = parseInt(data.new_balance)
+        localStorage.setItem('user', JSON.stringify(auth.user))
+      }
 
-    } catch (err) {
-      console.error(err)
-      error.value = err.message
+      return data.cards
+
+    } catch (e) {
+      error.value = e.message
+      throw e
     } finally {
       loading.value = false
     }
   }
 
-  // Vendas
-  async function sellCard(card, isFoil) {
+  async function sellCard(cardInfo, isFoil, userId) {
     try {
       const res = await fetch('http://localhost:3000/sell', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.value.id, cardId: card.id, isFoil: isFoil, rarity: card.rarity })
+        body: JSON.stringify({ userId, cardId: cardInfo.id, isFoil })
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      user.value.gold = data.newGold
-      user.value.collection_count--
+
+      if (data.error) throw new Error(data.error)
+
+      if (data.newGold !== undefined && auth.user) {
+        auth.user.gold = data.newGold
+        localStorage.setItem('user', JSON.stringify(auth.user))
+      }
+
       return data
     } catch (e) { throw e }
   }
 
-  async function sellSurplus() {
+  async function sellSurplus(userId) {
     try {
       const res = await fetch('http://localhost:3000/sell-surplus', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.value.id })
+        body: JSON.stringify({ userId })
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
+
+      if (data.goldEarned > 0 && auth.user) {
+        auth.user.gold += data.goldEarned
+        localStorage.setItem('user', JSON.stringify(auth.user))
+      }
       return data
-    } catch (e) { throw e }
+    } catch (e) {
+      console.error(e)
+      return { soldCount: 0, goldEarned: 0 }
+    }
   }
 
-  return { cards, loading, error, user, fetchUser, openBooster, sellCard, sellSurplus }
+  // AÇÃO: Vender Tudo (Nuclear)
+  async function sellAll(userId) {
+    try {
+      const res = await fetch('http://localhost:3000/sell-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      })
+      const data = await res.json()
+
+      if (data.error) throw new Error(data.error)
+
+      if (data.goldEarned > 0 && auth.user) {
+        auth.user.gold += data.goldEarned
+        localStorage.setItem('user', JSON.stringify(auth.user))
+      }
+
+      return data
+    } catch (e) {
+      console.error(e)
+      throw e
+    }
+  }
+
+  return { loading, error, openBooster, sellCard, sellSurplus, sellAll }
 })
